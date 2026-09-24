@@ -3,880 +3,662 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Courtroom Asylum - DOORS Edition</title>
+    <title>Courtroom Asylum - Minecraft Demon Interrogation</title>
+
+    <!-- Minecraft Pixel Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
     <style>
         :root {
-            --doors-bg: #0b0a08;
-            --doors-panel: #16130e;
-            --doors-border: #382c1b;
-            --doors-gold: #d4af37;
-            --doors-gold-glow: #ffdf6d;
-            --doors-crimson: #7a1212;
-            --doors-text: #e6dfd3;
-            --doors-dim: #7a7060;
+            --court-dark: #080705;
+            --court-panel: #14110c;
+            --court-border: #4a3b22;
+            --court-gold: #ffc107;
+            --court-crimson: #a81c1c;
+            --court-text: #e0d8c3;
+            --court-dim: #736955;
+            --court-green: #388e3c;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Georgia', 'Courier New', serif;
+            font-family: 'Press Start 2P', monospace;
+            image-rendering: pixelated;
         }
 
         body {
-            background-color: var(--doors-bg);
-            color: var(--doors-text);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-            background-image: 
-                radial-gradient(circle at 50% 30%, rgba(212, 175, 55, 0.05) 0%, transparent 70%),
-                radial-gradient(circle at 50% 100%, rgba(0, 0, 0, 0.9) 0%, #000 100%);
+            background-color: var(--court-dark);
+            color: var(--court-text);
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
         }
 
-        /* DOORS Lighting & CRT Overlay */
-        .vignette-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: radial-gradient(circle, transparent 60%, rgba(0, 0, 0, 0.85) 100%);
-            pointer-events: none;
+        /* Fullscreen WebGL Canvas Container */
+        #webgl-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        /* 2D Canvas Overlay UI Layout */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             z-index: 10;
+            pointer-events: none;
+            display: grid;
+            grid-template-columns: 320px 1fr 360px;
+            padding: 15px;
+            gap: 15px;
         }
 
-        @keyframes bulb-flicker {
-            0%, 100% { opacity: 1; filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.4)); }
-            48% { opacity: 1; }
-            50% { opacity: 0.3; filter: none; }
-            52% { opacity: 0.95; }
-            80% { opacity: 0.85; }
-            82% { opacity: 0.4; }
-            85% { opacity: 1; }
+        .interactive {
+            pointer-events: auto;
         }
 
-        @keyframes stress-pulse {
-            0% { box-shadow: inset 0 0 20px rgba(122, 18, 18, 0.3); }
-            50% { box-shadow: inset 0 0 50px rgba(122, 18, 18, 0.7); }
-            100% { box-shadow: inset 0 0 20px rgba(122, 18, 18, 0.3); }
-        }
-
+        /* Screen Wrapper */
         .screen {
             display: none;
-            width: 100%;
-            min-height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 20;
+            background: rgba(8, 7, 5, 0.95);
             padding: 25px;
-            z-index: 1;
         }
 
         .screen.active {
             display: flex;
             flex-direction: column;
-        }
-
-        /* Title / Hotel Lobby Screen */
-        #title-screen {
             justify-content: center;
             align-items: center;
-            text-align: center;
         }
 
-        .doors-logo {
-            font-size: 3.5rem;
-            color: var(--doors-gold);
-            text-transform: uppercase;
-            letter-spacing: 8px;
-            text-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
-            animation: bulb-flicker 6s infinite;
-            margin-bottom: 5px;
+        /* Common Box Styling */
+        .pixel-box {
+            background: var(--court-panel);
+            border: 4px solid var(--court-border);
+            padding: 15px;
+            box-shadow: inset -4px -4px 0px rgba(0,0,0,0.6), inset 4px 4px 0px rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
         }
 
-        .doors-subtitle {
-            font-size: 1.1rem;
-            color: var(--doors-dim);
-            letter-spacing: 5px;
-            margin-bottom: 35px;
-            text-transform: uppercase;
-        }
-
-        .doors-box {
-            background: var(--doors-panel);
-            border: 2px solid var(--doors-border);
-            padding: 30px;
-            border-radius: 4px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            max-width: 420px;
-            width: 100%;
-        }
-
+        /* Buttons */
         .btn {
-            background: #211a13;
-            border: 1px solid var(--doors-gold);
-            color: var(--doors-text);
-            padding: 12px 25px;
-            font-size: 0.95rem;
-            letter-spacing: 2px;
+            background: #2b2216;
+            border: 3px solid var(--court-gold);
+            color: var(--court-gold);
+            padding: 10px 14px;
+            font-size: 0.6rem;
             cursor: pointer;
-            transition: all 0.25s ease;
             text-transform: uppercase;
             margin-top: 10px;
-            width: 100%;
+            transition: all 0.1s;
+            text-align: center;
+            line-height: 1.4;
         }
 
         .btn:hover {
-            background: var(--doors-gold);
+            background: var(--court-gold);
             color: #000;
-            box-shadow: 0 0 15px var(--doors-gold-glow);
-            font-weight: bold;
+            box-shadow: 0 0 10px var(--court-gold);
         }
 
-        /* Headers & Panels */
-        .header-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid var(--doors-border);
-            padding-bottom: 15px;
-            margin-bottom: 25px;
-        }
-
-        .rank-badge {
-            background: #241b10;
-            border: 1px solid var(--doors-gold);
-            color: var(--doors-gold);
-            padding: 6px 16px;
-            font-size: 1.1rem;
-            font-weight: bold;
-        }
-
-        .cases-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .case-card {
-            background: var(--doors-panel);
-            border: 1px solid var(--doors-border);
-            padding: 20px;
-            position: relative;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .case-card:hover {
-            border-color: var(--doors-gold);
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
-            transform: translateY(-2px);
-        }
-
-        .case-diff {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            font-weight: bold;
-            color: var(--doors-gold);
-        }
-
-        /* Interrogation Room Layout */
-        #courtroom-screen {
-            animation: stress-pulse 7s infinite;
-        }
-
-        .court-layout {
-            display: grid;
-            grid-template-columns: 280px 1fr 280px;
-            gap: 20px;
-            flex-grow: 1;
-        }
-
-        .dossier-panel, .evidence-panel {
-            background: var(--doors-panel);
-            border: 1px solid var(--doors-border);
-            padding: 18px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .suspect-view {
-            background: #090806;
-            border: 2px solid var(--doors-border);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            padding: 20px;
-            position: relative;
-        }
-
-        .suspect-portrait {
-            width: 160px;
-            height: 160px;
-            border-radius: 50%;
-            border: 2px solid var(--doors-gold);
-            background: #17130d;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 4.5rem;
-            box-shadow: 0 0 25px rgba(212, 175, 55, 0.3);
-        }
-
-        .stress-bar-container {
-            width: 100%;
-            margin: 15px 0;
-        }
-
-        .stress-bar-bg {
-            width: 100%;
-            height: 22px;
-            background: #140d0a;
-            border: 1px solid var(--doors-crimson);
-            overflow: hidden;
-        }
-
-        .stress-bar-fill {
+        /* Left Side Panel: Suspect Statement & Stress */
+        #left-panel {
+            grid-column: 1;
             height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, var(--doors-crimson), #ff3333);
-            transition: width 0.5s ease;
-        }
-
-        .dialogue-log {
-            width: 100%;
-            height: 230px;
-            background: #0a0806;
-            border: 1px solid var(--doors-border);
-            padding: 15px;
-            overflow-y: auto;
-            font-size: 0.95rem;
-            line-height: 1.5;
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
 
-        .msg-player { color: var(--doors-gold); }
-        .msg-suspect { color: var(--doors-text); }
-        .msg-sys { color: var(--doors-dim); font-style: italic; }
+        /* Right Side Panel: Detective Terminal */
+        #right-panel {
+            grid-column: 3;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
 
-        .input-area {
-            width: 100%;
+        .terminal-log {
+            flex-grow: 1;
+            background: #000;
+            border: 2px solid var(--court-border);
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 0.55rem;
+            line-height: 1.6;
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
 
-        textarea.interrogate-input {
+        .msg-player { color: var(--court-gold); }
+        .msg-demon { color: #ff5555; }
+        .msg-sys { color: var(--court-dim); font-style: italic; }
+
+        /* Stress Bar */
+        .stress-container {
             width: 100%;
-            height: 60px;
-            background: #0d0a07;
-            border: 1px solid var(--doors-border);
-            color: var(--doors-text);
-            padding: 10px;
-            resize: none;
-            font-size: 0.9rem;
+            background: #000;
+            border: 2px solid var(--court-crimson);
+            height: 18px;
+            position: relative;
+            margin-top: 5px;
         }
 
-        textarea.interrogate-input:focus {
-            outline: none;
-            border-color: var(--doors-gold);
+        .stress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--court-crimson);
+            transition: width 0.3s;
         }
 
-        .evidence-item {
-            background: #1c1610;
-            border: 1px solid var(--doors-border);
-            padding: 12px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .evidence-item.selected {
-            border-color: var(--doors-gold);
-            background: #332514;
+        /* Text Input */
+        textarea.pixel-input {
+            width: 100%;
+            height: 55px;
+            background: #000;
+            border: 2px solid var(--court-border);
             color: #fff;
-        }
-
-        /* Form Inputs */
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-bottom: 15px;
-            text-align: left;
-        }
-
-        input, select, textarea {
-            background: #0d0a07;
-            border: 1px solid var(--doors-border);
-            color: var(--doors-text);
-            padding: 10px;
-            font-size: 0.9rem;
-        }
-
-        input:focus, select:focus, textarea:focus {
+            padding: 8px;
+            font-size: 0.55rem;
+            resize: none;
             outline: none;
-            border-color: var(--doors-gold);
+        }
+
+        textarea.pixel-input:focus {
+            border-color: var(--court-gold);
+        }
+
+        input[type="text"], input[type="password"], select {
+            background: #000;
+            border: 2px solid var(--court-border);
+            color: #fff;
+            padding: 8px;
+            font-size: 0.55rem;
+            margin-bottom: 10px;
+            width: 100%;
+            outline: none;
         }
 
         /* Modals */
         .modal {
-            display: none;
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.92);
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 100;
-        }
-
-        .modal-content {
-            background: var(--doors-panel);
-            border: 2px solid var(--doors-gold);
-            padding: 30px;
-            max-width: 450px;
-            width: 90%;
-            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <div class="vignette-overlay"></div>
-
     <!-- GEMINI API KEY MODAL -->
-    <div id="api-modal" class="modal" style="display: flex;">
-        <div class="modal-content">
-            <h2 style="color: var(--doors-gold); margin-bottom: 12px; letter-spacing: 2px;">🔑 ASYLUM KEY</h2>
-            <p style="margin-bottom: 20px; font-size: 0.85rem; color: var(--doors-dim);">Provide your Gemini API key to activate room responses.</p>
-            <input type="password" id="global-api-key" placeholder="AIzaSy..." style="width: 100%; margin-bottom: 20px;">
-            <button class="btn" onclick="saveApiKey()">INITIALIZE</button>
+    <div id="api-modal" class="modal">
+        <div class="pixel-box" style="max-width: 400px; text-align: center;">
+            <h3 style="color: var(--court-gold); margin-bottom: 12px; font-size: 0.75rem;">GEMINI API KEY</h3>
+            <p style="font-size: 0.5rem; color: var(--court-dim); margin-bottom: 15px; line-height: 1.5;">
+                Enter key to enable live demon interrogations:
+            </p>
+            <input type="password" id="global-api-key" placeholder="AIzaSy...">
+            <button class="btn" onclick="saveApiKey()">SAVE & CONTINUE</button>
+            <button class="btn" style="border-color: var(--court-dim); color: var(--court-dim);" onclick="skipApiKey()">USE FALLBACK AI</button>
         </div>
     </div>
 
-    <!-- TITLE & LOGIN SCREEN -->
-    <div id="title-screen" class="screen active">
-        <div class="doors-logo">🚪 COURTROOM ASYLUM</div>
-        <div class="doors-subtitle">ROOM 100: THE INTERROGATION</div>
+    <!-- AUTH SCREEN -->
+    <div id="auth-screen" class="screen active">
+        <div class="pixel-box" style="width: 380px; text-align: center;">
+            <h2 style="color: var(--court-gold); font-size: 0.8rem; margin-bottom: 15px; line-height: 1.5;">COURTROOM ASYLUM</h2>
+            <p style="font-size: 0.5rem; color: var(--court-dim); margin-bottom: 20px;" id="auth-subtitle">DETECTIVE REGISTRATION</p>
 
-        <div class="doors-box" id="auth-box">
-            <h3 id="auth-title" style="color: var(--doors-gold); margin-bottom: 20px; letter-spacing: 2px;">DETECTIVE LOGIN</h3>
+            <div style="text-align: left;">
+                <label style="font-size: 0.5rem; color: var(--court-gold);">USERNAME</label>
+                <input type="text" id="auth-user" placeholder="Detective_01">
+
+                <label style="font-size: 0.5rem; color: var(--court-gold);">PASSWORD</label>
+                <input type="password" id="auth-pass" placeholder="••••••••">
+            </div>
+
+            <button class="btn" onclick="handleAuth()" id="auth-btn">LOGIN / SIGN UP</button>
             
-            <div class="form-group">
-                <label style="font-size: 0.8rem; color: var(--doors-dim);">USERNAME</label>
-                <input type="text" id="auth-username" placeholder="e.g., Detective_01">
-            </div>
-
-            <div class="form-group">
-                <label style="font-size: 0.8rem; color: var(--doors-dim);">PASSWORD</label>
-                <input type="password" id="auth-password" placeholder="••••••••">
-            </div>
-
-            <div class="form-group" id="role-group" style="display: none;">
-                <label style="font-size: 0.8rem; color: var(--doors-dim);">ACCOUNT TYPE</label>
-                <select id="auth-role">
-                    <option value="player">Player (Detective)</option>
-                    <option value="admin">Admin (Case Architect)</option>
-                </select>
-            </div>
-
-            <button class="btn" id="auth-submit-btn" onclick="handleAuth()">ENTER COURTROOM</button>
-            <p style="margin-top: 15px; font-size: 0.8rem; color: var(--doors-dim); cursor: pointer;" onclick="toggleAuthMode()" id="auth-toggle-text">
-                Need an account? Register here.
+            <p style="font-size: 0.45rem; color: var(--court-dim); margin-top: 15px; line-height: 1.5;">
+                Note: Admin login is <br><span style="color:var(--court-gold);">admin_404 / kurukshetra</span>
             </p>
         </div>
     </div>
 
-    <!-- PLAYER DASHBOARD -->
+    <!-- DASHBOARD / CASE SELECTION SCREEN -->
     <div id="dashboard-screen" class="screen">
-        <div class="header-bar">
-            <div>
-                <h2>DETECTIVE DOSSIER</h2>
-                <span id="user-display" style="color: var(--doors-dim); font-size: 0.85rem;">Logged in as: ---</span>
-            </div>
-            <div>
-                <span>AVERAGE RATING: </span>
-                <span id="player-rank" class="rank-badge">UNRANKED</span>
-            </div>
-        </div>
-
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="color: var(--doors-gold); letter-spacing: 2px;">SELECT A DOOR (CASE)</h3>
-            <button class="btn" id="admin-nav-btn" style="display:none; width: auto; margin:0;" onclick="showScreen('admin-screen')">ADMIN CHAMBERS</button>
-        </div>
-
-        <div id="cases-list" class="cases-grid"></div>
-
-        <button class="btn" onclick="logout()" style="margin-top: 30px; align-self: flex-start; width: auto;">LOGOUT</button>
-    </div>
-
-    <!-- COURTROOM INTERROGATION SCREEN -->
-    <div id="courtroom-screen" class="screen">
-        <div class="header-bar">
-            <div>
-                <h2 id="active-case-title">DOOR: UNKNOWN</h2>
-                <span id="active-criminal-rank" style="color: var(--doors-gold);">CRIMINAL DIFFICULTY: C</span>
-            </div>
-            <div>
-                <span>QUESTIONS ASKED: </span>
-                <span id="questions-used-count" style="color: var(--doors-gold); font-size: 1.4rem; font-weight: bold;">0</span>
-            </div>
-        </div>
-
-        <div class="court-layout">
-            <!-- Left Dossier -->
-            <div class="dossier-panel">
-                <h3 style="color: var(--doors-gold);">SUSPECT DOSSIER</h3>
+        <div class="pixel-box" style="width: 80%; max-width: 700px; height: 80%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid var(--court-border); padding-bottom: 10px;">
                 <div>
-                    <strong id="suspect-name-display">Name: ---</strong><br>
-                    <small id="suspect-traits-display" style="color: var(--doors-dim);">Traits: ---</small>
+                    <h2 style="color: var(--court-gold); font-size: 0.75rem;">CASE FILES</h2>
+                    <span id="user-badge" style="font-size: 0.45rem; color: var(--court-dim);">Logged as: ---</span>
                 </div>
-                <hr style="border-color: var(--doors-border);">
-                <p style="font-size: 0.85rem; line-height: 1.4;" id="case-description-display">
-                    Case briefing loading...
-                </p>
-            </div>
-
-            <!-- Middle Interrogation Arena -->
-            <div class="suspect-view">
-                <div class="suspect-portrait" id="suspect-avatar">👁️</div>
-                
-                <div class="stress-bar-container">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 5px;">
-                        <span>SUSPECT STRESS</span>
-                        <span id="stress-text">0%</span>
-                    </div>
-                    <div class="stress-bar-bg">
-                        <div id="stress-fill" class="stress-bar-fill"></div>
-                    </div>
-                </div>
-
-                <div class="dialogue-log" id="dialogue-log">
-                    <div class="msg-sys">Interrogation initiated. Maximum 110 characters per question.</div>
-                </div>
-
-                <div class="input-area">
-                    <textarea id="player-input" class="interrogate-input" maxlength="110" placeholder="Interrogate suspect... (Max 110 characters)"></textarea>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span id="char-count" style="font-size: 0.75rem; color: var(--doors-dim);">0 / 110 Characters</span>
-                        <button class="btn" style="width: auto; padding: 6px 20px; margin: 0;" onclick="submitQuestion()">ASK</button>
-                    </div>
+                <div>
+                    <span style="font-size: 0.5rem;">RANK: </span>
+                    <span id="player-rank" style="color: var(--court-gold); font-size: 0.6rem;">UNRANKED</span>
                 </div>
             </div>
 
-            <!-- Right Evidence Locker -->
-            <div class="evidence-panel">
-                <h3 style="color: var(--doors-gold);">EVIDENCE</h3>
-                <p style="font-size: 0.75rem; color: var(--doors-dim);">Select evidence item to present:</p>
-                <div id="evidence-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            <div id="cases-list" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;"></div>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+                <button class="btn" onclick="logout()">LOGOUT</button>
+                <button class="btn" id="admin-btn" style="display: none; border-color: #ff5555; color: #ff5555;" onclick="openAdmin()">ADMIN CHAMBERS</button>
             </div>
         </div>
     </div>
 
-    <!-- ADMIN PANEL -->
+    <!-- ADMIN CASE ARCHITECT SCREEN -->
     <div id="admin-screen" class="screen">
-        <div class="header-bar">
-            <h2>ADMIN CHAMBERS</h2>
-            <button class="btn" style="width: auto; margin:0;" onclick="showScreen('dashboard-screen')">RETURN TO CASES</button>
+        <div class="pixel-box" style="width: 80%; max-width: 600px;">
+            <h2 style="color: #ff5555; font-size: 0.75rem; margin-bottom: 15px;">ADMIN CHAMBERS</h2>
+            
+            <label style="font-size: 0.5rem;">CASE TITLE</label>
+            <input type="text" id="adm-title" placeholder="Room 666: Soul Theft">
+
+            <label style="font-size: 0.5rem;">CRIMINAL NAME</label>
+            <input type="text" id="adm-name" placeholder="Malakor">
+
+            <label style="font-size: 0.5rem;">DIFFICULTY RANK</label>
+            <select id="adm-rank">
+                <option value="C">Rank C (Cracks easily)</option>
+                <option value="B">Rank B (Moderate composure)</option>
+                <option value="A">Rank A (High resistance)</option>
+                <option value="S">Rank S (Master manipulator)</option>
+                <option value="SSS">Rank SSS (Extreme composure)</option>
+                <option value="Z">Rank Z (Unholy entity - stress recovery)</option>
+            </select>
+
+            <label style="font-size: 0.5rem;">HIDDEN TRUTH / DOSSIER</label>
+            <input type="text" id="adm-truth" placeholder="Stole the keycard at 9 PM during lights out.">
+
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn" onclick="saveAdminCase()">PUBLISH CASE</button>
+                <button class="btn" onclick="showScreen('dashboard-screen')">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D WEBGL INTERROGATION CANVAS -->
+    <div id="webgl-container"></div>
+
+    <!-- 2D INTERROGATION UI OVERLAY -->
+    <div id="courtroom-ui" class="ui-layer" style="display: none;">
+        <!-- Left Panel: Criminal Statement Log -->
+        <div id="left-panel" class="interactive">
+            <div class="pixel-box">
+                <h3 style="color: var(--court-gold); font-size: 0.6rem; margin-bottom: 8px;">SUSPECT DOSSIER</h3>
+                <div style="font-size: 0.5rem; line-height: 1.5; color: var(--court-text);" id="dossier-info">
+                    Name: ---<br>
+                    Level: ---
+                </div>
+            </div>
+
+            <div class="pixel-box" style="flex-grow: 1;">
+                <h3 style="color: #ff5555; font-size: 0.6rem; margin-bottom: 8px;">DEMON STATEMENT</h3>
+                <div id="criminal-statement" style="font-size: 0.55rem; line-height: 1.6; color: #fff; flex-grow: 1;">
+                    "Speak, mortal detective..."
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <span style="font-size: 0.45rem; color: var(--court-dim);">DEMON STRESS:</span>
+                    <div class="stress-container">
+                        <div id="stress-bar" class="stress-fill"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="doors-box" style="max-width: 650px; margin: 0 auto; width: 100%;">
-            <h3 style="color: var(--doors-gold); margin-bottom: 15px;">ADD NEW CASE</h3>
-            
-            <div class="form-group">
-                <label>Case Title</label>
-                <input type="text" id="adm-title" placeholder="e.g., Room 50: The Stolen Keycard">
-            </div>
+        <!-- Middle: Clear view of 2D Animated Demon Canvas -->
+        <div></div>
 
-            <div class="form-group">
-                <label>Criminal Name</label>
-                <input type="text" id="adm-name" placeholder="e.g., Seek">
-            </div>
+        <!-- Right Panel: Detective Chat Terminal -->
+        <div id="right-panel" class="interactive">
+            <div class="pixel-box" style="flex-grow: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h3 style="color: var(--court-gold); font-size: 0.55rem;">TERMINAL LOG</h3>
+                    <span id="question-count" style="font-size: 0.5rem; color: var(--court-dim);">Q: 0</span>
+                </div>
 
-            <div class="form-group">
-                <label>Criminal Difficulty</label>
-                <select id="adm-rank">
-                    <option value="C">Level C (Cracks easily, high nervousness)</option>
-                    <option value="B">Level B (More controlled, still makes mistakes)</option>
-                    <option value="A">Level A (Skilled liar, deflects questions)</option>
-                    <option value="S">Level S (Very composed under pressure)</option>
-                    <option value="SSS">Level SSS (Extremely high stress resistance)</option>
-                    <option value="Z">Level Z (Master interrogatee, recovers stress, exploits ambiguity)</option>
-                </select>
-            </div>
+                <div id="terminal-log" class="terminal-log">
+                    <div class="msg-sys">Interrogation initiated. 110 char limit per prompt.</div>
+                </div>
 
-            <div class="form-group">
-                <label>Case Dossier & Hidden Truth</label>
-                <textarea id="adm-truth" rows="3" placeholder="Describe the crime details and the actual truth the criminal is hiding..."></textarea>
+                <div style="margin-top: 10px;">
+                    <textarea id="player-input" class="pixel-input" maxlength="110" placeholder="Type interrogation..."></textarea>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                        <span id="char-counter" style="font-size: 0.45rem; color: var(--court-dim);">0/110</span>
+                        <button class="btn" style="margin: 0; padding: 6px 12px;" onclick="sendInterrogation()">INTERROGATE</button>
+                    </div>
+                </div>
             </div>
-
-            <div class="form-group">
-                <label>Evidences (Comma separated)</label>
-                <input type="text" id="adm-evidence" placeholder="Lighter, Master Key, Skeleton Key">
-            </div>
-
-            <button class="btn" onclick="saveNewCase()">DEPLOY CASE TO ASYLUM</button>
         </div>
     </div>
 
     <script>
-        const LEVEL_CONFIG = {
-            'C':   { resistance: 1.0,  desc: 'Cracks quickly, high stress reactions' },
-            'B':   { resistance: 0.8,  desc: 'Controlled, but makes mistakes under pressure' },
-            'A':   { resistance: 0.6,  desc: 'Good liar, hard to catch without evidence' },
-            'S':   { resistance: 0.4,  desc: 'Very composed under pressure' },
-            'SSS': { resistance: 0.25, desc: 'Extremely difficult to pressure' },
-            'Z':   { resistance: 0.15, desc: 'Master interrogatee. Recovers stress & exploits ambiguity' }
-        };
+        // --- GAME STATE ---
+        let apiKey = localStorage.getItem('court_api_key') || '';
+        let accounts = JSON.parse(localStorage.getItem('court_accounts') || '{}');
+        let cases = JSON.parse(localStorage.getItem('court_cases') || 'null');
 
-        const EMOTION_DELTAS = {
-            'VERY_CONFIDENT': -40,
-            'COMPOSED': -20,
-            'CALM': -10,
-            'SLIGHTLY_NERVOUS': 10,
-            'NERVOUS': 20,
-            'STRESSED': 30,
-            'HIGHLY_STRESSED': 40,
-            'PANICKING': 50
-        };
+        if(!accounts['admin_404']) {
+            accounts['admin_404'] = { password: 'kurukshetra', role: 'admin', ratings: [] };
+        }
 
-        let defaultCases = [
-            {
-                id: 'case-01',
-                title: 'The Stolen Master Key',
-                criminalName: 'Aoi Kasumi',
-                rank: 'C',
-                dossier: 'The Master Key to Room 50 vanished at 09:00 PM. Aoi was seen hovering near the reception desk.',
-                evidence: ['Receipt Stamp', 'Brass Key Ring', 'Lobby Log'],
-                truth: 'Aoi took the key because she was trying to hide a stolen item in Room 50.'
-            },
-            {
-                id: 'case-02',
-                title: 'The Shadow Breach',
-                criminalName: 'Kaito Kuroda',
-                rank: 'Z',
-                dossier: 'A dangerous entity was unleashed on Floor 2. Kaito was caught overriding the security door.',
-                evidence: ['Encrypted USB', 'Biometric Override', 'Forged Badge'],
-                truth: 'Kaito deliberately tripped the system. He remains extremely calm and will only break when presented with concrete biometric proof.'
-            }
-        ];
+        if(!cases) {
+            cases = [
+                { id: 'case-1', title: 'The Obsidian Key', criminalName: 'Malakor The Fallen', rank: 'C', truth: 'Stole the warden key at midnight.' },
+                { id: 'case-2', title: 'Soul Corruption', criminalName: 'Azazel', rank: 'Z', truth: 'Tricked the guards using illusion spells.' }
+            ];
+        }
 
-        // --- STATE MANAGEMENT ---
-        let apiKey = '';
-        let accounts = {};
-        let currentUser = null; // { username, role, ratings: [] }
-        let isRegistering = false;
-        let cases = [];
+        let currentUser = null;
         let activeCase = null;
-        let questionsUsed = 0;
-        let currentStress = 0;
-        let selectedEvidence = null;
+        let questionsAsked = 0;
+        let stressLevel = 0;
 
-        window.onload = function() {
-            loadStorage();
+        // --- THREE.JS COURTROOM & 2D ANIMATED DEMON ---
+        let scene, camera, renderer, demonSpriteTexture, demonMesh;
+        let animClock = 0;
 
-            document.getElementById('player-input').addEventListener('input', function(e) {
-                document.getElementById('char-count').innerText = `${e.target.value.length} / 110 Characters`;
+        function init3D() {
+            const container = document.getElementById('webgl-container');
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x080705, 0.08);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 1.2, 3.2);
+
+            renderer = new THREE.WebGLRenderer({ antialias: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(0.5); // Pixelated low-res style
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x221a10, 1.2);
+            scene.add(ambient);
+
+            const spotlight = new THREE.SpotLight(0xffb74d, 3);
+            spotlight.position.set(0, 4, 1);
+            spotlight.angle = Math.PI / 4;
+            scene.add(spotlight);
+
+            // Courtroom Desk
+            const deskGeo = new THREE.BoxGeometry(2.4, 0.7, 0.9);
+            const deskMat = new THREE.MeshLambertMaterial({ color: 0x2b1d0c });
+            const desk = new THREE.Mesh(deskGeo, deskMat);
+            desk.position.set(0, 0, 0.5);
+            scene.add(desk);
+
+            // Create 2D Pixel Art Demon Canvas Texture
+            demonSpriteTexture = generateMinecraftDemonTexture(0);
+
+            const spriteMat = new THREE.SpriteMaterial({ map: demonSpriteTexture });
+            demonMesh = new THREE.Sprite(spriteMat);
+            demonMesh.scale.set(1.6, 1.6, 1);
+            demonMesh.position.set(0, 1.1, 0.2);
+            scene.add(demonMesh);
+
+            animate();
+        }
+
+        // Generate 2D Minecraft Demon Sprite Procedurally
+        function generateMinecraftDemonTexture(stress) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = false;
+
+            // Clear
+            ctx.clearRect(0, 0, 64, 64);
+
+            // Demon Head Block
+            ctx.fillStyle = "#2a0808";
+            ctx.fillRect(16, 16, 32, 32);
+
+            // Horns (Obsidian Pixel Blocks)
+            ctx.fillStyle = "#111111";
+            ctx.fillRect(12, 8, 8, 12);
+            ctx.fillRect(44, 8, 8, 12);
+
+            // Face Details (Crimson Shading)
+            ctx.fillStyle = "#4a0e0e";
+            ctx.fillRect(20, 20, 24, 8);
+
+            // Eyes (Glowing Nether Red)
+            const eyeColor = stress > 60 ? "#ff0000" : "#ff4444";
+            ctx.fillStyle = eyeColor;
+            ctx.fillRect(20, 28, 8, 6);
+            ctx.fillRect(36, 28, 8, 6);
+
+            // Pupils
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(22, 30, 3, 3);
+            ctx.fillRect(38, 30, 3, 3);
+
+            // Teeth / Mouth
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(22, 40, 20, 4);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(24, 40, 3, 3);
+            ctx.fillRect(30, 40, 3, 3);
+            ctx.fillRect(36, 40, 3, 3);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
+            return texture;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            animClock += 0.05;
+
+            // Minecraft Float / Idle Bobbing Animation
+            if(demonMesh) {
+                demonMesh.position.y = 1.1 + Math.sin(animClock) * 0.04;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // --- AUTH & SETUP ---
+        function handleAuth() {
+            const u = document.getElementById('auth-user').value.trim();
+            const p = document.getElementById('auth-pass').value.trim();
+
+            if(!u || !p) return alert('Enter credentials');
+
+            if(accounts[u]) {
+                if(accounts[u].password !== p) return alert('Incorrect password');
+            } else {
+                accounts[u] = { password: p, role: 'player', ratings: [] };
+                localStorage.setItem('court_accounts', JSON.stringify(accounts));
+            }
+
+            currentUser = { username: u, ...accounts[u] };
+            document.getElementById('user-badge').innerText = `Logged as: ${u} (${currentUser.role.toUpperCase()})`;
+            document.getElementById('admin-btn').style.display = currentUser.role === 'admin' ? 'block' : 'none';
+
+            renderDashboard();
+            showScreen('dashboard-screen');
+        }
+
+        function renderDashboard() {
+            const list = document.getElementById('cases-list');
+            list.innerHTML = '';
+
+            cases.forEach(c => {
+                const item = document.createElement('div');
+                item.className = 'pixel-box';
+                item.style.cursor = 'pointer';
+                item.onclick = () => startInterrogation(c);
+                item.innerHTML = `
+                    <div style="display:flex; justify-size:space-between; align-items:center;">
+                        <span style="color:var(--court-gold); font-size:0.55rem;">${c.title}</span>
+                        <span style="color:#ff5555; font-size:0.5rem;">RANK: ${c.rank}</span>
+                    </div>
+                    <div style="font-size:0.45rem; color:var(--court-dim); margin-top:5px;">Suspect: ${c.criminalName}</div>
+                `;
+                list.appendChild(item);
             });
-        };
+        }
+
+        function startInterrogation(c) {
+            activeCase = c;
+            questionsAsked = 0;
+            stressLevel = 0;
+
+            document.getElementById('dossier-info').innerHTML = `Name: ${c.criminalName}<br>Rank: ${c.rank}`;
+            document.getElementById('criminal-statement').innerText = `"Speak, detective. What do you claim to know?"`;
+            document.getElementById('terminal-log').innerHTML = `<div class="msg-sys">Interrogation started for ${c.title}.</div>`;
+            document.getElementById('question-count').innerText = `Q: 0`;
+            updateStress(0);
+
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('courtroom-ui').style.display = 'grid';
+        }
+
+        function updateStress(delta) {
+            stressLevel = Math.min(Math.max(stressLevel + delta, 0), 100);
+            document.getElementById('stress-bar').style.width = `${stressLevel}%`;
+
+            if(demonMesh) {
+                demonMesh.material.map = generateMinecraftDemonTexture(stressLevel);
+            }
+        }
+
+        async function sendInterrogation() {
+            const input = document.getElementById('player-input');
+            const text = input.value.trim();
+
+            if(!text) return;
+            questionsAsked++;
+            document.getElementById('question-count').innerText = `Q: ${questionsAsked}`;
+
+            const log = document.getElementById('terminal-log');
+            log.innerHTML += `<div><span class="msg-player">Detective:</span> ${text}</div>`;
+
+            input.value = '';
+            document.getElementById('char-counter').innerText = '0/110';
+            log.scrollTop = log.scrollHeight;
+
+            if(apiKey) {
+                try {
+                    const reply = await callGemini(text);
+                    log.innerHTML += `<div><span class="msg-demon">${activeCase.criminalName}:</span> ${reply.dialogue}</div>`;
+                    document.getElementById('criminal-statement').innerText = `"${reply.dialogue}"`;
+                    updateStress(reply.stressDelta);
+                } catch(e) {
+                    fallbackResponse(text);
+                }
+            } else {
+                fallbackResponse(text);
+            }
+
+            if(stressLevel >= 100) {
+                setTimeout(() => {
+                    alert(`CONFESSION SECURED! Questions: ${questionsAsked}`);
+                    document.getElementById('courtroom-ui').style.display = 'none';
+                    showScreen('dashboard-screen');
+                }, 500);
+            }
+        }
+
+        function fallbackResponse(q) {
+            const log = document.getElementById('terminal-log');
+            const responses = [
+                "Your mortal accusations mean nothing to me!",
+                "You have no proof of my presence at midnight.",
+                "Hmph. A clever question, but still incorrect."
+            ];
+            const chosen = responses[Math.floor(Math.random() * responses.length)];
+            log.innerHTML += `<div><span class="msg-demon">${activeCase.criminalName}:</span> ${chosen}</div>`;
+            document.getElementById('criminal-statement').innerText = `"${chosen}"`;
+            updateStress(25);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        async function callGemini(q) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const prompt = `Roleplay as criminal demon ${activeCase.criminalName} in courtroom. Case truth: ${activeCase.truth}. Question: "${q}". Return JSON: {"dialogue": "string", "stressDelta": number}`;
+            
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { responseMimeType: "application/json" }
+                })
+            });
+
+            const data = await res.json();
+            return JSON.parse(data.candidates[0].content.parts[0].text);
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
 
         function saveApiKey() {
-            const input = document.getElementById('global-api-key').value.trim();
-            if(!input) return alert('Enter a valid Gemini API Key.');
-            apiKey = input;
-            localStorage.setItem('doors_api_key', apiKey);
+            apiKey = document.getElementById('global-api-key').value.trim();
+            localStorage.setItem('court_api_key', apiKey);
             document.getElementById('api-modal').style.display = 'none';
         }
 
-        function loadStorage() {
-            const storedKey = localStorage.getItem('doors_api_key');
-            if(storedKey) {
-                apiKey = storedKey;
-                document.getElementById('api-modal').style.display = 'none';
-            }
-
-            const storedCases = localStorage.getItem('doors_cases');
-            cases = storedCases ? JSON.parse(storedCases) : defaultCases;
-
-            const storedAccounts = localStorage.getItem('doors_accounts');
-            accounts = storedAccounts ? JSON.parse(storedAccounts) : {
-                'admin': { password: 'admin', role: 'admin', ratings: [] }
-            };
+        function skipApiKey() {
+            document.getElementById('api-modal').style.display = 'none';
         }
 
-        // --- AUTHENTICATION ---
-        function toggleAuthMode() {
-            isRegistering = !isRegistering;
-            document.getElementById('auth-title').innerText = isRegistering ? 'CREATE ACCOUNT' : 'DETECTIVE LOGIN';
-            document.getElementById('auth-submit-btn').innerText = isRegistering ? 'REGISTER ACCOUNT' : 'ENTER COURTROOM';
-            document.getElementById('role-group').style.display = isRegistering ? 'flex' : 'none';
-            document.getElementById('auth-toggle-text').innerText = isRegistering ? 'Already have an account? Login.' : 'Need an account? Register here.';
-        }
+        function saveAdminCase() {
+            const t = document.getElementById('adm-title').value;
+            const n = document.getElementById('adm-name').value;
+            const r = document.getElementById('adm-rank').value;
+            const tr = document.getElementById('adm-truth').value;
 
-        function handleAuth() {
-            const user = document.getElementById('auth-username').value.trim();
-            const pass = document.getElementById('auth-password').value.trim();
-            const role = document.getElementById('auth-role').value;
-
-            if(!user || !pass) return alert('Enter both username and password.');
-
-            if(isRegistering) {
-                if(accounts[user]) return alert('Username already exists.');
-                accounts[user] = { password: pass, role: role, ratings: [] };
-                localStorage.setItem('doors_accounts', JSON.stringify(accounts));
-                alert('Account created! Logging in...');
-            } else {
-                if(!accounts[user] || accounts[user].password !== pass) {
-                    return alert('Invalid credentials.');
-                }
-            }
-
-            currentUser = { username: user, ...accounts[user] };
-            document.getElementById('user-display').innerText = `Logged in as: ${user} (${currentUser.role.toUpperCase()})`;
-            document.getElementById('admin-nav-btn').style.display = currentUser.role === 'admin' ? 'block' : 'none';
-
-            updateAverageRatingDisplay();
+            cases.push({ id: 'case-' + Date.now(), title: t, criminalName: n, rank: r, truth: tr });
+            localStorage.setItem('court_cases', JSON.stringify(cases));
             renderDashboard();
             showScreen('dashboard-screen');
         }
 
         function logout() {
             currentUser = null;
-            document.getElementById('auth-username').value = '';
-            document.getElementById('auth-password').value = '';
-            showScreen('title-screen');
+            showScreen('auth-screen');
         }
 
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-        }
-
-        // --- RATING CALCULATOR ---
-        function calculateCaseRating(qCount) {
-            if (qCount <= 4) return 'Z';
-            if (qCount === 5) return 'SSS';
-            if (qCount === 6) return 'S';
-            if (qCount === 7) return 'A';
-            if (qCount === 8) return 'B';
-            return 'C';
-        }
-
-        function updateAverageRatingDisplay() {
-            if(!currentUser || currentUser.ratings.length === 0) {
-                document.getElementById('player-rank').innerText = 'UNRANKED';
-                return;
-            }
-            const rankWeights = { 'C': 1, 'B': 2, 'A': 3, 'S': 4, 'SSS': 5, 'Z': 6 };
-            const revWeights = ['C', 'B', 'A', 'S', 'SSS', 'Z'];
-
-            const sum = currentUser.ratings.reduce((acc, r) => acc + rankWeights[r], 0);
-            const avg = Math.round(sum / currentUser.ratings.length);
-            document.getElementById('player-rank').innerText = revWeights[Math.min(avg - 1, 5)];
-        }
-
-        // --- DASHBOARD ---
-        function renderDashboard() {
-            const container = document.getElementById('cases-list');
-            container.innerHTML = '';
-
-            cases.forEach((c) => {
-                const card = document.createElement('div');
-                card.className = 'case-card';
-                card.onclick = () => startInterrogation(c);
-                card.innerHTML = `
-                    <span class="case-diff">LEVEL: ${c.rank}</span>
-                    <h4 style="color: var(--doors-gold); margin-bottom: 8px;">${c.title}</h4>
-                    <p style="font-size: 0.8rem; color: var(--doors-dim);">Suspect: ${c.criminalName}</p>
-                `;
-                container.appendChild(card);
+        window.onload = () => {
+            init3D();
+            if(apiKey) document.getElementById('api-modal').style.display = 'none';
+            document.getElementById('player-input').addEventListener('input', (e) => {
+                document.getElementById('char-counter').innerText = `${e.target.value.length}/110`;
             });
-        }
-
-        // --- INTERROGATION ---
-        function startInterrogation(caseObj) {
-            activeCase = caseObj;
-            questionsUsed = 0;
-            currentStress = 0;
-            selectedEvidence = null;
-
-            document.getElementById('active-case-title').innerText = `DOOR: ${caseObj.title.toUpperCase()}`;
-            document.getElementById('active-criminal-rank').innerText = `CRIMINAL LEVEL: ${caseObj.rank}`;
-            document.getElementById('questions-used-count').innerText = '0';
-            document.getElementById('suspect-name-display').innerText = `Name: ${caseObj.criminalName}`;
-            document.getElementById('suspect-traits-display').innerText = LEVEL_CONFIG[caseObj.rank].desc;
-            document.getElementById('case-description-display').innerText = caseObj.dossier;
-
-            const evList = document.getElementById('evidence-list');
-            evList.innerHTML = '';
-            caseObj.evidence.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'evidence-item';
-                div.innerText = `🔍 ${item}`;
-                div.onclick = () => {
-                    document.querySelectorAll('.evidence-item').forEach(e => e.classList.remove('selected'));
-                    if(selectedEvidence === item) {
-                        selectedEvidence = null;
-                    } else {
-                        selectedEvidence = item;
-                        div.classList.add('selected');
-                    }
-                };
-                evList.appendChild(div);
-            });
-
-            document.getElementById('dialogue-log').innerHTML = `<div class="msg-sys">Room door locked. Begin questioning.</div>`;
-            updateStressUI(0);
-            showScreen('courtroom-screen');
-        }
-
-        function updateStressUI(delta) {
-            currentStress = Math.min(Math.max(currentStress + delta, 0), 100);
-            document.getElementById('stress-fill').style.width = `${currentStress}%`;
-            document.getElementById('stress-text').innerText = `${Math.round(currentStress)}%`;
-
-            const avatar = document.getElementById('suspect-avatar');
-            if(currentStress < 25) avatar.innerText = '👁️';
-            else if(currentStress < 55) avatar.innerText = '😰';
-            else if(currentStress < 85) avatar.innerText = '😱';
-            else avatar.innerText = '🩸';
-        }
-
-        async function submitQuestion() {
-            if(!apiKey) return alert('API Key missing. Click Initialize.');
-            const inputEl = document.getElementById('player-input');
-            const questionText = inputEl.value.trim();
-
-            if(!questionText) return;
-            if(questionText.length > 110) return alert('Question exceeds 110 characters!');
-
-            questionsUsed++;
-            document.getElementById('questions-used-count').innerText = questionsUsed;
-
-            const log = document.getElementById('dialogue-log');
-            let playerMsg = `<div><strong class="msg-player">Detective:</strong> ${questionText}`;
-            if(selectedEvidence) playerMsg += ` <span style="color:var(--doors-gold);">[Evidence: ${selectedEvidence}]</span>`;
-            playerMsg += `</div>`;
-            log.innerHTML += playerMsg;
-
-            inputEl.value = '';
-            document.getElementById('char-count').innerText = '0 / 110 Characters';
-            log.scrollTop = log.scrollHeight;
-
-            try {
-                const response = await callGeminiAPI(questionText, selectedEvidence);
-                processResponse(response);
-            } catch(err) {
-                log.innerHTML += `<div class="msg-sys">API Error: ${err.message}</div>`;
-            }
-
-            selectedEvidence = null;
-            document.querySelectorAll('.evidence-item').forEach(e => e.classList.remove('selected'));
-        }
-
-        async function callGeminiAPI(question, evidence) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
-            const systemInstruction = `
-You are roleplaying as criminal suspect ${activeCase.criminalName} in Courtroom Asylum (DOORS theme).
-CRIMINAL LEVEL: ${activeCase.rank}
-
-LEVEL CHARACTERISTICS:
-- C: Easily pressured, stutters, makes obvious mistakes.
-- B: Controlled, but makes subtle slip-ups under stress.
-- A: Professional liar, deflects accusations.
-- S: Very composed under pressure.
-- SSS: Extremely high stress resistance.
-- Z: Master interrogatee. Gives technically truthful answers, avoids incriminating language, exploits ambiguous questions, recovers stress, and only breaks under absolute contradictions.
-
-CASE DOSSIER: ${activeCase.dossier}
-HIDDEN TRUTH: ${activeCase.truth}
-EVIDENCE ITEMS PRESENT: ${activeCase.evidence.join(', ')}
-CURRENT STRESS: ${currentStress}%
-
-RULES:
-1. Max 70 words per response.
-2. Return strictly JSON:
-{
-  "dialogue": "In-character dialogue text",
-  "emotion": "ONE OF: [VERY_CONFIDENT, COMPOSED, CALM, SLIGHTLY_NERVOUS, NERVOUS, STRESSED, HIGHLY_STRESSED, PANICKING]",
-  "confessed": true/false
-}
-            `;
-
-            const userPrompt = `Detective asks: "${question}" ${evidence ? `[Presents evidence: ${evidence}]` : ''}`;
-
-            const body = {
-                contents: [{ parts: [{ text: userPrompt }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] },
-                generationConfig: { responseMimeType: "application/json" }
-            };
-
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-
-            if(!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            return JSON.parse(data.candidates[0].content.parts[0].text);
-        }
-
-        function processResponse(resData) {
-            const log = document.getElementById('dialogue-log');
-            log.innerHTML += `<div><strong class="msg-suspect">${activeCase.criminalName}:</strong> ${resData.dialogue}</div>`;
-
-            const baseDelta = EMOTION_DELTAS[resData.emotion] || 0;
-            const multiplier = LEVEL_CONFIG[activeCase.rank].resistance;
-            const finalDelta = baseDelta * multiplier;
-
-            updateStressUI(finalDelta);
-            log.scrollTop = log.scrollHeight;
-
-            if(resData.confessed || currentStress >= 100) {
-                const caseRating = calculateCaseRating(questionsUsed);
-                accounts[currentUser.username].ratings.push(caseRating);
-                currentUser.ratings.push(caseRating);
-                localStorage.setItem('doors_accounts', JSON.stringify(accounts));
-                updateAverageRatingDisplay();
-
-                setTimeout(() => {
-                    alert(`CONFESSION SECURED!\nQuestions Asked: ${questionsUsed}\nCase Performance Rating: ${caseRating}`);
-                    showScreen('dashboard-screen');
-                }, 800);
-            }
-        }
-
-        // --- ADMIN SAVE CASE ---
-        function saveNewCase() {
-            if(currentUser.role !== 'admin') return alert('Access Denied. Admins only.');
-
-            const title = document.getElementById('adm-title').value.trim();
-            const name = document.getElementById('adm-name').value.trim();
-            const rank = document.getElementById('adm-rank').value;
-            const truth = document.getElementById('adm-truth').value.trim();
-            const evidenceRaw = document.getElementById('adm-evidence').value.trim();
-
-            if(!title || !name || !truth) return alert('Fill in all fields.');
-
-            const newCase = {
-                id: 'case-' + Date.now(),
-                title: title,
-                criminalName: name,
-                rank: rank,
-                dossier: truth.substring(0, 110) + '...',
-                evidence: evidenceRaw ? evidenceRaw.split(',').map(e => e.trim()) : ['Evidence Document'],
-                truth: truth
-            };
-
-            cases.push(newCase);
-            localStorage.setItem('doors_cases', JSON.stringify(cases));
-            renderDashboard();
-            alert('New case deployed!');
-            showScreen('dashboard-screen');
-        }
+        };
     </script>
 </body>
 </html>
