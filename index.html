@@ -1,664 +1,285 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Courtroom Asylum - Minecraft Demon Interrogation</title>
+  <meta charset="UTF-8">
+  <title>Minecraft Style Admin System</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-    <!-- Minecraft Pixel Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    
-    <!-- Three.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    * {
+      box-sizing: border-box;
+      font-family: 'Press Start 2P', monospace;
+      image-rendering: pixelated;
+    }
 
-    <style>
-        :root {
-            --court-dark: #080705;
-            --court-panel: #14110c;
-            --court-border: #4a3b22;
-            --court-gold: #ffc107;
-            --court-crimson: #a81c1c;
-            --court-text: #e0d8c3;
-            --court-dim: #736955;
-            --court-green: #388e3c;
-        }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #1e1e1e;
+      background-image: radial-gradient(#3a3a3a 15%, transparent 16%), radial-gradient(#2a2a2a 15%, transparent 16%);
+      background-size: 32px 32px;
+      background-position: 0 0, 16px 16px;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Press Start 2P', monospace;
-            image-rendering: pixelated;
-        }
+    /* Minecraft Header Title */
+    .title-container {
+      margin-top: 40px;
+      text-align: center;
+      position: relative;
+    }
 
-        body {
-            background-color: var(--court-dark);
-            color: var(--court-text);
-            height: 100vh;
-            overflow: hidden;
-            user-select: none;
-        }
+    .minecraft-title {
+      font-size: 32px;
+      color: #dddddd;
+      text-shadow: 4px 4px 0px #000000, -2px -2px 0px #555555;
+      letter-spacing: 2px;
+    }
 
-        /* Fullscreen WebGL Canvas Container */
-        #webgl-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 1;
-        }
+    .splash-text {
+      color: #ffff55;
+      font-size: 10px;
+      position: absolute;
+      right: -20px;
+      bottom: -15px;
+      transform: rotate(-15deg);
+      animation: pulse 0.8s infinite alternate;
+      text-shadow: 2px 2px 0px #3f3f00;
+    }
 
-        /* 2D Canvas Overlay UI Layout */
-        .ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 10;
-            pointer-events: none;
-            display: grid;
-            grid-template-columns: 320px 1fr 360px;
-            padding: 15px;
-            gap: 15px;
-        }
+    @keyframes pulse {
+      0% { transform: rotate(-15deg) scale(1); }
+      100% { transform: rotate(-15deg) scale(1.1); }
+    }
 
-        .interactive {
-            pointer-events: auto;
-        }
+    /* UI Panels & Boxes */
+    .mc-panel {
+      background: #c6c6c6;
+      border: 4px solid #ffffff;
+      border-right-color: #555555;
+      border-bottom-color: #555555;
+      padding: 20px;
+      width: 90%;
+      max-width: 700px;
+      margin: 20px 0;
+      color: #000;
+      box-shadow: inset -4px -4px 0px #555555, inset 4px 4px 0px #ffffff;
+    }
 
-        /* Screen Wrapper */
-        .screen {
-            display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 20;
-            background: rgba(8, 7, 5, 0.95);
-            padding: 25px;
-        }
+    /* Minecraft Buttons */
+    .mc-btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      background: #7c7c7c;
+      border: 3px solid #ffffff;
+      border-right-color: #373737;
+      border-bottom-color: #373737;
+      color: #ffffff;
+      font-size: 12px;
+      text-align: center;
+      cursor: pointer;
+      text-shadow: 2px 2px 0px #000000;
+      box-shadow: inset -3px -3px 0px #373737, inset 3px 3px 0px #ffffff;
+    }
 
-        .screen.active {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
+    .mc-btn:hover {
+      background: #8b8b22;
+      border-color: #ffffa0;
+      border-right-color: #3b3b00;
+      border-bottom-color: #3b3b00;
+      color: #ffffa0;
+    }
 
-        /* Common Box Styling */
-        .pixel-box {
-            background: var(--court-panel);
-            border: 4px solid var(--court-border);
-            padding: 15px;
-            box-shadow: inset -4px -4px 0px rgba(0,0,0,0.6), inset 4px 4px 0px rgba(255,255,255,0.05);
-            display: flex;
-            flex-direction: column;
-        }
+    .mc-btn:active {
+      border-color: #373737;
+      border-right-color: #ffffff;
+      border-bottom-color: #ffffff;
+      box-shadow: inset 3px 3px 0px #000000;
+    }
 
-        /* Buttons */
-        .btn {
-            background: #2b2216;
-            border: 3px solid var(--court-gold);
-            color: var(--court-gold);
-            padding: 10px 14px;
-            font-size: 0.6rem;
-            cursor: pointer;
-            text-transform: uppercase;
-            margin-top: 10px;
-            transition: all 0.1s;
-            text-align: center;
-            line-height: 1.4;
-        }
+    /* Text Inputs */
+    .mc-input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0 16px 0;
+      background: #000000;
+      border: 2px solid #a0a0a0;
+      color: #ffffff;
+      font-size: 10px;
+      outline: none;
+    }
 
-        .btn:hover {
-            background: var(--court-gold);
-            color: #000;
-            box-shadow: 0 0 10px var(--court-gold);
-        }
+    .mc-input:focus {
+      border-color: #ffffff;
+    }
 
-        /* Left Side Panel: Suspect Statement & Stress */
-        #left-panel {
-            grid-column: 1;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+    /* 2D Mesh Canvas */
+    canvas {
+      background: #000;
+      border: 3px solid #555;
+      display: block;
+      margin: 10px auto;
+      cursor: crosshair;
+    }
 
-        /* Right Side Panel: Detective Terminal */
-        #right-panel {
-            grid-column: 3;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+    /* Hidden Utility Classes */
+    .hidden {
+      display: none !important;
+    }
 
-        .terminal-log {
-            flex-grow: 1;
-            background: #000;
-            border: 2px solid var(--court-border);
-            padding: 10px;
-            overflow-y: auto;
-            font-size: 0.55rem;
-            line-height: 1.6;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .msg-player { color: var(--court-gold); }
-        .msg-demon { color: #ff5555; }
-        .msg-sys { color: var(--court-dim); font-style: italic; }
-
-        /* Stress Bar */
-        .stress-container {
-            width: 100%;
-            background: #000;
-            border: 2px solid var(--court-crimson);
-            height: 18px;
-            position: relative;
-            margin-top: 5px;
-        }
-
-        .stress-fill {
-            height: 100%;
-            width: 0%;
-            background: var(--court-crimson);
-            transition: width 0.3s;
-        }
-
-        /* Text Input */
-        textarea.pixel-input {
-            width: 100%;
-            height: 55px;
-            background: #000;
-            border: 2px solid var(--court-border);
-            color: #fff;
-            padding: 8px;
-            font-size: 0.55rem;
-            resize: none;
-            outline: none;
-        }
-
-        textarea.pixel-input:focus {
-            border-color: var(--court-gold);
-        }
-
-        input[type="text"], input[type="password"], select {
-            background: #000;
-            border: 2px solid var(--court-border);
-            color: #fff;
-            padding: 8px;
-            font-size: 0.55rem;
-            margin-bottom: 10px;
-            width: 100%;
-            outline: none;
-        }
-
-        /* Modals */
-        .modal {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.9);
-            z-index: 100;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-    </style>
+    .criminal-card {
+      background: #a0a0a0;
+      border: 2px solid #000;
+      padding: 10px;
+      margin-bottom: 10px;
+      color: #000;
+    }
+  </style>
 </head>
 <body>
 
-    <!-- GEMINI API KEY MODAL -->
-    <div id="api-modal" class="modal">
-        <div class="pixel-box" style="max-width: 400px; text-align: center;">
-            <h3 style="color: var(--court-gold); margin-bottom: 12px; font-size: 0.75rem;">GEMINI API KEY</h3>
-            <p style="font-size: 0.5rem; color: var(--court-dim); margin-bottom: 15px; line-height: 1.5;">
-                Enter key to enable live demon interrogations:
-            </p>
-            <input type="password" id="global-api-key" placeholder="AIzaSy...">
-            <button class="btn" onclick="saveApiKey()">SAVE & CONTINUE</button>
-            <button class="btn" style="border-color: var(--court-dim); color: var(--court-dim);" onclick="skipApiKey()">USE FALLBACK AI</button>
-        </div>
+  <div class="title-container">
+    <div class="minecraft-title">MINECRAFT ADMIN</div>
+    <div class="splash-text">Now with 2D Mesh Generation!</div>
+  </div>
+
+  <!-- LOGIN PANEL -->
+  <div id="login-panel" class="mc-panel">
+    <h3 style="margin-top: 0;">LOG IN</h3>
+    <label>USERNAME:</label>
+    <input type="text" id="username" class="mc-input" placeholder="Enter username...">
+    
+    <label>PASSWORD:</label>
+    <input type="password" id="password" class="mc-input" placeholder="Enter password...">
+
+    <button class="mc-btn" onclick="handleLogin()">LOG IN</button>
+    <p id="login-msg" style="color: red; font-size: 8px;"></p>
+  </div>
+
+  <!-- MAIN DASHBOARD -->
+  <div id="dashboard" class="mc-panel hidden">
+    <h3 style="margin-top:0;">ADMIN DASHBOARD</h3>
+
+    <!-- 2D MESH FEATURE -->
+    <h4>2D MESH GENERATOR</h4>
+    <p style="font-size: 8px;">Click on the grid to create mesh nodes and connect geometry:</p>
+    <canvas id="meshCanvas" width="600" height="250"></canvas>
+    <button class="mc-btn" onclick="clearMesh()">CLEAR MESH</button>
+
+    <hr style="border: 2px solid #555; margin: 20px 0;">
+
+    <!-- CRIMINAL DATABASE -->
+    <h4>CRIMINAL RECORDS</h4>
+    <div id="criminal-list">
+      <div class="criminal-card">
+        <strong>NAME:</strong> Steve "Grief" Smith<br>
+        <strong>CRIME:</strong> Stealing diamonds & lava griefing<br>
+        <strong>STATUS:</strong> Banned from server
+      </div>
     </div>
 
-    <!-- AUTH SCREEN -->
-    <div id="auth-screen" class="screen active">
-        <div class="pixel-box" style="width: 380px; text-align: center;">
-            <h2 style="color: var(--court-gold); font-size: 0.8rem; margin-bottom: 15px; line-height: 1.5;">COURTROOM ASYLUM</h2>
-            <p style="font-size: 0.5rem; color: var(--court-dim); margin-bottom: 20px;" id="auth-subtitle">DETECTIVE REGISTRATION</p>
+    <button class="mc-btn" onclick="addCase()">ADD NEW CASE</button>
+    <button class="mc-btn" style="background:#8b2222;" onclick="handleLogout()">LOGOUT</button>
+  </div>
 
-            <div style="text-align: left;">
-                <label style="font-size: 0.5rem; color: var(--court-gold);">USERNAME</label>
-                <input type="text" id="auth-user" placeholder="Detective_01">
+  <script>
+    // Authentication Logic (Credentials hidden from UI)
+    function handleLogin() {
+      const u = document.getElementById('username').value;
+      const p = document.getElementById('password').value;
+      const msg = document.getElementById('login-msg');
 
-                <label style="font-size: 0.5rem; color: var(--court-gold);">PASSWORD</label>
-                <input type="password" id="auth-pass" placeholder="••••••••">
-            </div>
+      if (u === 'admin' && p === 'admin123') {
+        document.getElementById('login-panel').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        initCanvas();
+      } else {
+        msg.innerText = "INVALID CREDENTIALS!";
+      }
+    }
 
-            <button class="btn" onclick="handleAuth()" id="auth-btn">LOGIN / SIGN UP</button>
-            
-            <p style="font-size: 0.45rem; color: var(--court-dim); margin-top: 15px; line-height: 1.5;">
-                Note: Admin login is <br><span style="color:var(--court-gold);">admin_404 / kurukshetra</span>
-            </p>
-        </div>
-    </div>
+    function handleLogout() {
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('login-panel').classList.remove('hidden');
+    }
 
-    <!-- DASHBOARD / CASE SELECTION SCREEN -->
-    <div id="dashboard-screen" class="screen">
-        <div class="pixel-box" style="width: 80%; max-width: 700px; height: 80%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid var(--court-border); padding-bottom: 10px;">
-                <div>
-                    <h2 style="color: var(--court-gold); font-size: 0.75rem;">CASE FILES</h2>
-                    <span id="user-badge" style="font-size: 0.45rem; color: var(--court-dim);">Logged as: ---</span>
-                </div>
-                <div>
-                    <span style="font-size: 0.5rem;">RANK: </span>
-                    <span id="player-rank" style="color: var(--court-gold); font-size: 0.6rem;">UNRANKED</span>
-                </div>
-            </div>
+    // 2D Mesh Generator Canvas Logic
+    let canvas, ctx;
+    let nodes = [];
 
-            <div id="cases-list" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;"></div>
+    function initCanvas() {
+      canvas = document.getElementById('meshCanvas');
+      ctx = canvas.getContext('2d');
+      canvas.addEventListener('click', addNode);
+      drawMesh();
+    }
 
-            <div style="display: flex; justify-content: space-between; margin-top: 15px;">
-                <button class="btn" onclick="logout()">LOGOUT</button>
-                <button class="btn" id="admin-btn" style="display: none; border-color: #ff5555; color: #ff5555;" onclick="openAdmin()">ADMIN CHAMBERS</button>
-            </div>
-        </div>
-    </div>
+    function addNode(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      nodes.push({x, y});
+      drawMesh();
+    }
 
-    <!-- ADMIN CASE ARCHITECT SCREEN -->
-    <div id="admin-screen" class="screen">
-        <div class="pixel-box" style="width: 80%; max-width: 600px;">
-            <h2 style="color: #ff5555; font-size: 0.75rem; margin-bottom: 15px;">ADMIN CHAMBERS</h2>
-            
-            <label style="font-size: 0.5rem;">CASE TITLE</label>
-            <input type="text" id="adm-title" placeholder="Room 666: Soul Theft">
+    function clearMesh() {
+      nodes = [];
+      drawMesh();
+    }
 
-            <label style="font-size: 0.5rem;">CRIMINAL NAME</label>
-            <input type="text" id="adm-name" placeholder="Malakor">
+    function drawMesh() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw gridlines
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += 20) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += 20) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
 
-            <label style="font-size: 0.5rem;">DIFFICULTY RANK</label>
-            <select id="adm-rank">
-                <option value="C">Rank C (Cracks easily)</option>
-                <option value="B">Rank B (Moderate composure)</option>
-                <option value="A">Rank A (High resistance)</option>
-                <option value="S">Rank S (Master manipulator)</option>
-                <option value="SSS">Rank SSS (Extreme composure)</option>
-                <option value="Z">Rank Z (Unholy entity - stress recovery)</option>
-            </select>
-
-            <label style="font-size: 0.5rem;">HIDDEN TRUTH / DOSSIER</label>
-            <input type="text" id="adm-truth" placeholder="Stole the keycard at 9 PM during lights out.">
-
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button class="btn" onclick="saveAdminCase()">PUBLISH CASE</button>
-                <button class="btn" onclick="showScreen('dashboard-screen')">CANCEL</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 3D WEBGL INTERROGATION CANVAS -->
-    <div id="webgl-container"></div>
-
-    <!-- 2D INTERROGATION UI OVERLAY -->
-    <div id="courtroom-ui" class="ui-layer" style="display: none;">
-        <!-- Left Panel: Criminal Statement Log -->
-        <div id="left-panel" class="interactive">
-            <div class="pixel-box">
-                <h3 style="color: var(--court-gold); font-size: 0.6rem; margin-bottom: 8px;">SUSPECT DOSSIER</h3>
-                <div style="font-size: 0.5rem; line-height: 1.5; color: var(--court-text);" id="dossier-info">
-                    Name: ---<br>
-                    Level: ---
-                </div>
-            </div>
-
-            <div class="pixel-box" style="flex-grow: 1;">
-                <h3 style="color: #ff5555; font-size: 0.6rem; margin-bottom: 8px;">DEMON STATEMENT</h3>
-                <div id="criminal-statement" style="font-size: 0.55rem; line-height: 1.6; color: #fff; flex-grow: 1;">
-                    "Speak, mortal detective..."
-                </div>
-
-                <div style="margin-top: 10px;">
-                    <span style="font-size: 0.45rem; color: var(--court-dim);">DEMON STRESS:</span>
-                    <div class="stress-container">
-                        <div id="stress-bar" class="stress-fill"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Middle: Clear view of 2D Animated Demon Canvas -->
-        <div></div>
-
-        <!-- Right Panel: Detective Chat Terminal -->
-        <div id="right-panel" class="interactive">
-            <div class="pixel-box" style="flex-grow: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <h3 style="color: var(--court-gold); font-size: 0.55rem;">TERMINAL LOG</h3>
-                    <span id="question-count" style="font-size: 0.5rem; color: var(--court-dim);">Q: 0</span>
-                </div>
-
-                <div id="terminal-log" class="terminal-log">
-                    <div class="msg-sys">Interrogation initiated. 110 char limit per prompt.</div>
-                </div>
-
-                <div style="margin-top: 10px;">
-                    <textarea id="player-input" class="pixel-input" maxlength="110" placeholder="Type interrogation..."></textarea>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-                        <span id="char-counter" style="font-size: 0.45rem; color: var(--court-dim);">0/110</span>
-                        <button class="btn" style="margin: 0; padding: 6px 12px;" onclick="sendInterrogation()">INTERROGATE</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // --- GAME STATE ---
-        let apiKey = localStorage.getItem('court_api_key') || '';
-        let accounts = JSON.parse(localStorage.getItem('court_accounts') || '{}');
-        let cases = JSON.parse(localStorage.getItem('court_cases') || 'null');
-
-        if(!accounts['admin_404']) {
-            accounts['admin_404'] = { password: 'kurukshetra', role: 'admin', ratings: [] };
+      // Draw mesh connections
+      ctx.strokeStyle = '#55ff55';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dist = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(nodes[i].x, nodes[i].y);
+            ctx.lineTo(nodes[j].x, nodes[j].y);
+            ctx.stroke();
+          }
         }
+      }
 
-        if(!cases) {
-            cases = [
-                { id: 'case-1', title: 'The Obsidian Key', criminalName: 'Malakor The Fallen', rank: 'C', truth: 'Stole the warden key at midnight.' },
-                { id: 'case-2', title: 'Soul Corruption', criminalName: 'Azazel', rank: 'Z', truth: 'Tricked the guards using illusion spells.' }
-            ];
-        }
+      // Draw nodes
+      ctx.fillStyle = '#ff5555';
+      nodes.forEach(node => {
+        ctx.fillRect(node.x - 4, node.y - 4, 8, 8);
+      });
+    }
 
-        let currentUser = null;
-        let activeCase = null;
-        let questionsAsked = 0;
-        let stressLevel = 0;
-
-        // --- THREE.JS COURTROOM & 2D ANIMATED DEMON ---
-        let scene, camera, renderer, demonSpriteTexture, demonMesh;
-        let animClock = 0;
-
-        function init3D() {
-            const container = document.getElementById('webgl-container');
-            scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x080705, 0.08);
-
-            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-            camera.position.set(0, 1.2, 3.2);
-
-            renderer = new THREE.WebGLRenderer({ antialias: false });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(0.5); // Pixelated low-res style
-            container.appendChild(renderer.domElement);
-
-            // Lighting
-            const ambient = new THREE.AmbientLight(0x221a10, 1.2);
-            scene.add(ambient);
-
-            const spotlight = new THREE.SpotLight(0xffb74d, 3);
-            spotlight.position.set(0, 4, 1);
-            spotlight.angle = Math.PI / 4;
-            scene.add(spotlight);
-
-            // Courtroom Desk
-            const deskGeo = new THREE.BoxGeometry(2.4, 0.7, 0.9);
-            const deskMat = new THREE.MeshLambertMaterial({ color: 0x2b1d0c });
-            const desk = new THREE.Mesh(deskGeo, deskMat);
-            desk.position.set(0, 0, 0.5);
-            scene.add(desk);
-
-            // Create 2D Pixel Art Demon Canvas Texture
-            demonSpriteTexture = generateMinecraftDemonTexture(0);
-
-            const spriteMat = new THREE.SpriteMaterial({ map: demonSpriteTexture });
-            demonMesh = new THREE.Sprite(spriteMat);
-            demonMesh.scale.set(1.6, 1.6, 1);
-            demonMesh.position.set(0, 1.1, 0.2);
-            scene.add(demonMesh);
-
-            animate();
-        }
-
-        // Generate 2D Minecraft Demon Sprite Procedurally
-        function generateMinecraftDemonTexture(stress) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 64;
-            canvas.height = 64;
-            const ctx = canvas.getContext('2d');
-            ctx.imageSmoothingEnabled = false;
-
-            // Clear
-            ctx.clearRect(0, 0, 64, 64);
-
-            // Demon Head Block
-            ctx.fillStyle = "#2a0808";
-            ctx.fillRect(16, 16, 32, 32);
-
-            // Horns (Obsidian Pixel Blocks)
-            ctx.fillStyle = "#111111";
-            ctx.fillRect(12, 8, 8, 12);
-            ctx.fillRect(44, 8, 8, 12);
-
-            // Face Details (Crimson Shading)
-            ctx.fillStyle = "#4a0e0e";
-            ctx.fillRect(20, 20, 24, 8);
-
-            // Eyes (Glowing Nether Red)
-            const eyeColor = stress > 60 ? "#ff0000" : "#ff4444";
-            ctx.fillStyle = eyeColor;
-            ctx.fillRect(20, 28, 8, 6);
-            ctx.fillRect(36, 28, 8, 6);
-
-            // Pupils
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(22, 30, 3, 3);
-            ctx.fillRect(38, 30, 3, 3);
-
-            // Teeth / Mouth
-            ctx.fillStyle = "#000000";
-            ctx.fillRect(22, 40, 20, 4);
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(24, 40, 3, 3);
-            ctx.fillRect(30, 40, 3, 3);
-            ctx.fillRect(36, 40, 3, 3);
-
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.magFilter = THREE.NearestFilter;
-            texture.minFilter = THREE.NearestFilter;
-            return texture;
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            animClock += 0.05;
-
-            // Minecraft Float / Idle Bobbing Animation
-            if(demonMesh) {
-                demonMesh.position.y = 1.1 + Math.sin(animClock) * 0.04;
-            }
-
-            renderer.render(scene, camera);
-        }
-
-        // --- AUTH & SETUP ---
-        function handleAuth() {
-            const u = document.getElementById('auth-user').value.trim();
-            const p = document.getElementById('auth-pass').value.trim();
-
-            if(!u || !p) return alert('Enter credentials');
-
-            if(accounts[u]) {
-                if(accounts[u].password !== p) return alert('Incorrect password');
-            } else {
-                accounts[u] = { password: p, role: 'player', ratings: [] };
-                localStorage.setItem('court_accounts', JSON.stringify(accounts));
-            }
-
-            currentUser = { username: u, ...accounts[u] };
-            document.getElementById('user-badge').innerText = `Logged as: ${u} (${currentUser.role.toUpperCase()})`;
-            document.getElementById('admin-btn').style.display = currentUser.role === 'admin' ? 'block' : 'none';
-
-            renderDashboard();
-            showScreen('dashboard-screen');
-        }
-
-        function renderDashboard() {
-            const list = document.getElementById('cases-list');
-            list.innerHTML = '';
-
-            cases.forEach(c => {
-                const item = document.createElement('div');
-                item.className = 'pixel-box';
-                item.style.cursor = 'pointer';
-                item.onclick = () => startInterrogation(c);
-                item.innerHTML = `
-                    <div style="display:flex; justify-size:space-between; align-items:center;">
-                        <span style="color:var(--court-gold); font-size:0.55rem;">${c.title}</span>
-                        <span style="color:#ff5555; font-size:0.5rem;">RANK: ${c.rank}</span>
-                    </div>
-                    <div style="font-size:0.45rem; color:var(--court-dim); margin-top:5px;">Suspect: ${c.criminalName}</div>
-                `;
-                list.appendChild(item);
-            });
-        }
-
-        function startInterrogation(c) {
-            activeCase = c;
-            questionsAsked = 0;
-            stressLevel = 0;
-
-            document.getElementById('dossier-info').innerHTML = `Name: ${c.criminalName}<br>Rank: ${c.rank}`;
-            document.getElementById('criminal-statement').innerText = `"Speak, detective. What do you claim to know?"`;
-            document.getElementById('terminal-log').innerHTML = `<div class="msg-sys">Interrogation started for ${c.title}.</div>`;
-            document.getElementById('question-count').innerText = `Q: 0`;
-            updateStress(0);
-
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('courtroom-ui').style.display = 'grid';
-        }
-
-        function updateStress(delta) {
-            stressLevel = Math.min(Math.max(stressLevel + delta, 0), 100);
-            document.getElementById('stress-bar').style.width = `${stressLevel}%`;
-
-            if(demonMesh) {
-                demonMesh.material.map = generateMinecraftDemonTexture(stressLevel);
-            }
-        }
-
-        async function sendInterrogation() {
-            const input = document.getElementById('player-input');
-            const text = input.value.trim();
-
-            if(!text) return;
-            questionsAsked++;
-            document.getElementById('question-count').innerText = `Q: ${questionsAsked}`;
-
-            const log = document.getElementById('terminal-log');
-            log.innerHTML += `<div><span class="msg-player">Detective:</span> ${text}</div>`;
-
-            input.value = '';
-            document.getElementById('char-counter').innerText = '0/110';
-            log.scrollTop = log.scrollHeight;
-
-            if(apiKey) {
-                try {
-                    const reply = await callGemini(text);
-                    log.innerHTML += `<div><span class="msg-demon">${activeCase.criminalName}:</span> ${reply.dialogue}</div>`;
-                    document.getElementById('criminal-statement').innerText = `"${reply.dialogue}"`;
-                    updateStress(reply.stressDelta);
-                } catch(e) {
-                    fallbackResponse(text);
-                }
-            } else {
-                fallbackResponse(text);
-            }
-
-            if(stressLevel >= 100) {
-                setTimeout(() => {
-                    alert(`CONFESSION SECURED! Questions: ${questionsAsked}`);
-                    document.getElementById('courtroom-ui').style.display = 'none';
-                    showScreen('dashboard-screen');
-                }, 500);
-            }
-        }
-
-        function fallbackResponse(q) {
-            const log = document.getElementById('terminal-log');
-            const responses = [
-                "Your mortal accusations mean nothing to me!",
-                "You have no proof of my presence at midnight.",
-                "Hmph. A clever question, but still incorrect."
-            ];
-            const chosen = responses[Math.floor(Math.random() * responses.length)];
-            log.innerHTML += `<div><span class="msg-demon">${activeCase.criminalName}:</span> ${chosen}</div>`;
-            document.getElementById('criminal-statement').innerText = `"${chosen}"`;
-            updateStress(25);
-            log.scrollTop = log.scrollHeight;
-        }
-
-        async function callGemini(q) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-            const prompt = `Roleplay as criminal demon ${activeCase.criminalName} in courtroom. Case truth: ${activeCase.truth}. Question: "${q}". Return JSON: {"dialogue": "string", "stressDelta": number}`;
-            
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { responseMimeType: "application/json" }
-                })
-            });
-
-            const data = await res.json();
-            return JSON.parse(data.candidates[0].content.parts[0].text);
-        }
-
-        function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-        }
-
-        function saveApiKey() {
-            apiKey = document.getElementById('global-api-key').value.trim();
-            localStorage.setItem('court_api_key', apiKey);
-            document.getElementById('api-modal').style.display = 'none';
-        }
-
-        function skipApiKey() {
-            document.getElementById('api-modal').style.display = 'none';
-        }
-
-        function saveAdminCase() {
-            const t = document.getElementById('adm-title').value;
-            const n = document.getElementById('adm-name').value;
-            const r = document.getElementById('adm-rank').value;
-            const tr = document.getElementById('adm-truth').value;
-
-            cases.push({ id: 'case-' + Date.now(), title: t, criminalName: n, rank: r, truth: tr });
-            localStorage.setItem('court_cases', JSON.stringify(cases));
-            renderDashboard();
-            showScreen('dashboard-screen');
-        }
-
-        function logout() {
-            currentUser = null;
-            showScreen('auth-screen');
-        }
-
-        window.onload = () => {
-            init3D();
-            if(apiKey) document.getElementById('api-modal').style.display = 'none';
-            document.getElementById('player-input').addEventListener('input', (e) => {
-                document.getElementById('char-counter').innerText = `${e.target.value.length}/110`;
-            });
-        };
-    </script>
+    // Add Case Logic
+    function addCase() {
+      const name = prompt("Enter offender name:", "Herobrine");
+      const crime = prompt("Enter crime:", "Unlawful bedrock manipulation");
+      if (name && crime) {
+        const list = document.getElementById('criminal-list');
+        const card = document.createElement('div');
+        card.className = 'criminal-card';
+        card.innerHTML = `<strong>NAME:</strong> ${name}<br><strong>CRIME:</strong> ${crime}<br><strong>STATUS:</strong> Under Investigation`;
+        list.appendChild(card);
+      }
+    }
+  </script>
 </body>
 </html>
